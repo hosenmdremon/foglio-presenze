@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>Foglio Presenze</title>
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+body{
+font-family:Arial,sans-serif;
+background:#f4f6f9;
+padding:20px;
+margin:0;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+}
+
+h1{
+text-align:center;
+color:#2563eb;
+}
+
+.header{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+gap:10px;
+margin-bottom:20px;
+}
+
+input,select{
+padding:10px;
+width:100%;
+box-sizing:border-box;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+}
+
+th{
+background:#2563eb;
+color:white;
+padding:10px;
+}
+
+td{
+border:1px solid #ddd;
+padding:8px;
+text-align:center;
+}
+
+tr:nth-child(even){
+background:#f7f7f7;
+}
+
+button{
+padding:10px 15px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+margin:5px;
+color:white;
+}
+
+.save{background:green;}
+.reset{background:red;}
+.print{background:#2563eb;}
+
+.summary{
+margin-top:20px;
+display:flex;
+gap:20px;
+flex-wrap:wrap;
+}
+
+.card{
+background:white;
+padding:15px;
+border-radius:10px;
+flex:1;
+text-align:center;
+}
+
+@media print{
+button{
+display:none;
+}
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h1>📋 Foglio Presenze al Lavoro</h1>
+
+<div class="header">
+
+<div>
+<label>Nome</label>
+<input type="text" id="nome">
+</div>
+
+<div>
+<label>Anno</label>
+<input type="number" id="anno">
+</div>
+
+<div>
+<label>Mese</label>
+<select id="mese">
+<option value="0">Gennaio</option>
+<option value="1">Febbraio</option>
+<option value="2">Marzo</option>
+<option value="3">Aprile</option>
+<option value="4">Maggio</option>
+<option value="5">Giugno</option>
+<option value="6">Luglio</option>
+<option value="7">Agosto</option>
+<option value="8">Settembre</option>
+<option value="9">Ottobre</option>
+<option value="10">Novembre</option>
+<option value="11">Dicembre</option>
+</select>
+</div>
+
+<div>
+<label>Tariffa (€)</label>
+<input type="number" id="tariffa">
+</div>
+
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Giorno</th>
+<th>Presenza</th>
+<th>Ore</th>
+</tr>
+</thead>
+
+<tbody id="tabellaBody"></tbody>
+
+</table>
+
+<div class="summary">
+
+<div class="card">
+<h2 id="oreTotali">0</h2>
+<p>Ore Totali</p>
+</div>
+
+<div class="card">
+<h2 id="stipendio">€ 0.00</h2>
+<p>Stipendio</p>
+</div>
+
+</div>
+
+<br>
+
+<button class="save" onclick="salva()">💾 Salva</button>
+<button class="reset" onclick="resetDati()">🗑 Reset</button>
+<button class="print" onclick="window.print()">🖨 PDF</button>
+
+</div>
+
+<script>
+
+const KEY="presenze_app";
+
+const giorni=[
+"Domenica",
+"Lunedì",
+"Martedì",
+"Mercoledì",
+"Giovedì",
+"Venerdì",
+"Sabato"
+];
+
+document.getElementById("anno").value =
+new Date().getFullYear();
+
+function creaTabella(){
+
+let body=document.getElementById("tabellaBody");
+
+body.innerHTML="";
+
+const anno=
+parseInt(document.getElementById("anno").value)
+|| new Date().getFullYear();
+
+const mese=
+parseInt(document.getElementById("mese").value);
+
+for(let i=1;i<=31;i++){
+
+let data=
+new Date(anno,mese,i);
+
+body.innerHTML+=`
+<tr>
+<td>${i}</td>
+<td>${giorni[data.getDay()]}</td>
+<td>
+<input type="checkbox"
+class="presenza"
+data-day="${i}">
+</td>
+<td>
+<input
+type="number"
+class="ore"
+data-day="${i}"
+step="0.5"
+min="0">
+</td>
+</tr>
+`;
+}
+
+ripristinaRighe();
+eventi();
+}
+
+function eventi(){
+
+document.querySelectorAll(".ore,.presenza")
+.forEach(el=>{
+
+el.addEventListener("input",()=>{
+calcola();
+salva();
+});
+
+el.addEventListener("change",()=>{
+calcola();
+salva();
+});
+
+});
+}
+
+function calcola(){
+
+let ore=0;
+
+document.querySelectorAll(".ore")
+.forEach(el=>{
+ore+=parseFloat(el.value)||0;
+});
+
+let tariffa=
+parseFloat(
+document.getElementById("tariffa").value
+)||0;
+
+document.getElementById("oreTotali")
+.innerText=ore.toFixed(2);
+
+document.getElementById("stipendio")
+.innerText=
+"€ "+(ore*tariffa).toFixed(2);
+}
+
+function salva(){
+
+let dati={
+
+nome:
+document.getElementById("nome").value,
+
+anno:
+document.getElementById("anno").value,
+
+mese:
+document.getElementById("mese").value,
+
+tariffa:
+document.getElementById("tariffa").value,
+
+giorni:[]
+};
+
+document.querySelectorAll(".ore")
+.forEach(el=>{
+
+let d=el.dataset.day;
+
+dati.giorni.push({
+
+day:d,
+
+ore:el.value,
+
+presenza:
+document.querySelector(
+`.presenza[data-day="${d}"]`
+).checked
+
+});
+
+});
+
+localStorage.setItem(KEY,
+JSON.stringify(dati));
+
+}
+
+function carica(){
+
+let dati=
+JSON.parse(
+localStorage.getItem(KEY)
+);
+
+if(!dati) return;
+
+nome.value=dati.nome||"";
+anno.value=dati.anno||"";
+mese.value=dati.mese||"0";
+tariffa.value=dati.tariffa||"";
+}
+
+function ripristinaRighe(){
+
+let dati=
+JSON.parse(
+localStorage.getItem(KEY)
+);
+
+if(!dati) return;
+
+dati.giorni.forEach(g=>{
+
+let ore=
+document.querySelector(
+`.ore[data-day="${g.day}"]`
+);
+
+let pre=
+document.querySelector(
+`.presenza[data-day="${g.day}"]`
+);
+
+if(ore) ore.value=g.ore;
+if(pre) pre.checked=g.presenza;
+
+});
+
+calcola();
+
+}
+
+function resetDati(){
+
+if(confirm("Cancella tutti i dati?")){
+
+localStorage.removeItem(KEY);
+
+location.reload();
+
+}
+
+}
+
+nome.addEventListener("input",salva);
+
+anno.addEventListener("input",()=>{
+creaTabella();
+salva();
+});
+
+mese.addEventListener("change",()=>{
+creaTabella();
+salva();
+});
+
+tariffa.addEventListener("input",()=>{
+calcola();
+salva();
+});
+
+carica();
+creaTabella();
+
+if("serviceWorker" in navigator){
+navigator.serviceWorker
+.register("service-worker.js");
+}
+
+</script>
+
+</body>
+</html>
